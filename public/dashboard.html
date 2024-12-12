@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Dashboard</title>
+  <!-- <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    h1 {
+      color: #333;
+    }
+    #welcomeMessage {
+      font-size: 1.2em;
+      margin: 10px 0;
+    }
+    #logoutButton {
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
+    }
+  </style> -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <h1>Welcome to your Dashboard</h1>
+  <p id="welcomeMessage"></p>
+  <button id="logoutButton">Logout</button>
+
+  <script>
+    // Display welcome message with the user's username
+    function displayWelcomeMessage() {
+      // Retrieve username from local storage
+      const username = localStorage.getItem("username");
+      const welcomeMessage = document.getElementById("welcomeMessage");
+
+      if (username) {
+        welcomeMessage.textContent = `Hello, ${username}! Welcome back.`;
+      } else {
+        welcomeMessage.textContent = "Welcome!";
+      }
+    }
+
+    // Logout function
+    function logout() {
+      // Clear user data from storage
+      localStorage.removeItem("username");
+
+      // Redirect to login page
+      window.location.href = "login.html";
+    }
+
+    // Set up event listener for the logout button
+    document.getElementById("logoutButton").addEventListener("click", logout);
+
+    // Display the welcome message on page load
+    displayWelcomeMessage();
+  </script>
+</body>
+</html>

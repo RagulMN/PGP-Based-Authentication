@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+  <script src="https://cdn.jsdelivr.net/npm/openpgp@5.0.0/dist/openpgp.min.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <h1>Login</h1>
+  <form id="loginForm">
+    <input type="text" id="username" placeholder="Username" required />
+    <input type="password" id="password" placeholder="Password" required />
+    <button type="submit">Login</button>
+  </form>
+
+  <script>
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      // Get the form data
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+
+      try {
+        // Perform initial login request to get challenge
+        const loginResponse = await fetch("/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        });
+
+        if (!loginResponse.ok) {
+          console.error("Login request failed:", loginResponse.status, loginResponse.statusText);
+          alert("Login failed: Server error.");
+          return;
+        }
+
+        const loginResult = await loginResponse.json();
+        if (!loginResult.success) {
+          console.error("Login failed:", loginResult.message);
+          alert(loginResult.message);
+          return;
+        }
+
+        // Get challenge and public key from the server
+        const challenge = loginResult.challenge;
+
+        // Request user's private key for signing the challenge
+        const privateKeyArmored = prompt("Please paste your private key:");
+        const passphrase = "test";
+
+        // Decrypt the private key with passphrase
+        let privateKey;
+        try {
+          privateKey = await openpgp.decryptKey({
+            privateKey: await openpgp.readPrivateKey({ armoredKey: privateKeyArmored }),
+            passphrase
+          });
+        } catch (error) {
+          console.error("Private key decryption failed. Please check your private key.");
+          alert("Invalid private key. Please check your private key and try again.");
+          // Notify the server about invalid key usage for logging
+          await fetch("/invalid-key", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, error: "Invalid private key" })
+          });
+          return;
+        }
+
+        // Sign the challenge message
+        const signedChallenge = await openpgp.sign({
+          message: await openpgp.createMessage({ text: challenge }),
+          signingKeys: privateKey,
+          detached: true
+        });
+
+        // Send the signed challenge to the server for verification
+        const verifyResponse = await fetch("/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, signedChallenge })
+        });
+
+        if (!verifyResponse.ok) {
+          console.error("Verification request failed:", verifyResponse.status, verifyResponse.statusText);
+          alert("Verification failed: Server error.");
+          return;
+        }
+
+        const verifyResult = await verifyResponse.json();
+        if (verifyResult.success) {
+          // Store username in localStorage
+          localStorage.setItem("username", username);
+
+          // Redirect to dashboard
+          alert("Login successful!");
+          window.location.href = "/dashboard";
+        } else {
+          console.error("Verification failed:", verifyResult.message);
+          alert("Verification failed: " + verifyResult.message);
+        }
+      } catch (error) {
+        console.error("An unexpected error occurred:", error);
+        alert("An unexpected error occurred. Please try again.");
+      }
+    });
+  </script>
+</body>
+</html>

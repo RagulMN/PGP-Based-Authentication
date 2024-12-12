@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Register</title>
+  <script src="https://cdn.jsdelivr.net/npm/openpgp@5.0.0/dist/openpgp.min.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <h1>Register</h1>
+  <form id="registerForm">
+    <input type="text" id="username" placeholder="Username" required />
+    <input type="email" id="email" placeholder="Email" required />
+    <input type="password" id="password" placeholder="Password" required />
+    <button type="submit">Register</button>
+  </form>
+
+  <script>
+    async function generateKeys() {
+      const passphrase = "test";
+      const { privateKey, publicKey } = await openpgp.generateKey({
+        type: 'rsa',            // Type of the key
+        rsaBits: 2048,          // RSA key size
+        userIDs: [{ name: "User" }], // User identity
+        passphrase               // Passphrase for private key
+      });
+
+      return { privateKey, publicKey };
+    }
+
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const username = document.getElementById("username").value;
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      // Generate keys
+      const { privateKey, publicKey } = await generateKeys();
+      // Log public key and form data to ensure correctness
+        console.log("Submitting registration:", { username, email, password, publicKey });
+
+      // Save private key locally
+      const blob = new Blob([privateKey], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${username}_private_key.txt`;
+      document.body.appendChild(a);
+      a.click();
+
+      // Register user with public key
+      const response = await fetch("/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, email, password, publicKey })
+      });
+
+      const result = await response.json();
+      alert(result.message);
+    });
+  </script>
+</body>
+</html>
